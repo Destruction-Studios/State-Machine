@@ -35,6 +35,7 @@ end
 
 function StateMT:_entered()
     assert(self:GetStateMachine(), NO_STATE_ERR:format(self:GetName()))
+    assert(typeof(self.Entered) == "function", NO_STATE_FUNCTION_ERR:format(self:GetName(), "Entered"))
 
     return Promise.try(self.Entered, self):catch(function(err)
         warn(STATE_FUNCTION_PROMISE_ERR:format("Entered", self:GetName(), tostring(err)))
@@ -43,6 +44,7 @@ end
 
 function StateMT:_exited()
     assert(self:GetStateMachine(), NO_STATE_ERR:format(self:GetName()))
+    assert(typeof(self.Exited) == "function", NO_STATE_FUNCTION_ERR:format(self:GetName(), "Exited"))
 
     return Promise.try(self.Exited, self):catch(function(err)
         warn(STATE_FUNCTION_PROMISE_ERR:format("Exited", self:GetName(), tostring(err)))
@@ -52,6 +54,7 @@ end
 
 function StateMT:_cycled()
     assert(self:GetStateMachine(), NO_STATE_ERR:format(self:GetName()))
+    assert(typeof(self.Cycled) == "function", NO_STATE_FUNCTION_ERR:format(self:GetName(), "Cycled"))
 
     local function setNextState()
         local stateMachine = self:GetStateMachine()
@@ -63,16 +66,8 @@ function StateMT:_cycled()
     end)
 end
 
-function StateMT:Cycled()
-    error(NO_STATE_FUNCTION_ERR:format(self:GetName(), "Cycled"), 2)
-end
-
-function StateMT:Entered()
-    error(NO_STATE_FUNCTION_ERR:format(self:GetName(), "Entered"), 2)
-end
-
-function StateMT:Exited()
-    error(NO_STATE_FUNCTION_ERR:format(self:GetName(), "Exited"), 2)
+function StateMT:Clone()
+    return table.clone(self)
 end
 
 return State

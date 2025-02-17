@@ -13,6 +13,8 @@ export type State = {
     Cycled:(self:State, enterState: () -> nil) -> nil,
     Entered:(self:State) -> nil,
     Exited:(self:State) -> nil,
+
+    Clone:(self:State) -> State,
 }
 
 export type StateMachine = {
