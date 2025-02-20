@@ -40,6 +40,7 @@ local NO_DEFAULT_STATE_ERR = "State Machine does not have a Default State"
 local ALREADY_STARTED_ERR = "State Machine has already been started"
 local NOT_STARTED_ERR = "State Machine has not been started"
 local NO_STATES_ERR = "State Machine has no states"
+local DUPE_STATE_NAME = "Duplicate state name of '%s'"
 
 local StateMachine = {}
 local StateMachineMT = {}
@@ -114,6 +115,15 @@ end
 
 function StateMachineMT:SetStates(states:{State})
     assert(typeof(states) == "table", `Invalid type for argument #1 :SetStates expected 'table' got {typeof(states)}`)
+
+    local tracked = {}
+    for _, v in states do
+        if table.find(tracked, v:GetName()) then
+            error(DUPE_STATE_NAME:format(v:GetName()))
+        end
+        table.insert(tracked, v:GetName())
+    end
+    table.clear(tracked)
 
     self._states = states
 
