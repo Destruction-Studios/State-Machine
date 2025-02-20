@@ -1,5 +1,6 @@
 
 local State = require(script.State)
+local Signal = require(script.Parent.Signal)
 
 -- export type State = typeof(State.new())
 export type StateIdentifier = string | number
@@ -18,6 +19,8 @@ export type State = {
 }
 
 export type StateMachine = {
+    Debug:(self:StateMachine) -> StateMachine,
+
     GetState:(self:StateMachine, stateIdentifier:StateIdentifier) -> State,
     GetStates:(self:StateMachine) -> {[number]: State},
     GetCurrentState:(self:StateMachine) -> State,
@@ -57,7 +60,23 @@ function StateMachine.new(states:{State}): StateMachine
     self._queuedState = nil
     self._lastState = nil
 
+    self._debug = false
+
+    self.StateChanged = Signal.new()
+
     self._started = false
+
+    return self
+end
+
+function StateMachineMT:_printDebug(str)
+    if self._debug then
+        print(`\n[STATE-MACHINE] {str}\n`)
+    end
+end
+
+function StateMachineMT:Debug()
+    self._debug = true
 
     return self
 end
@@ -120,6 +139,7 @@ end
 function StateMachineMT:UpdateState()
     local nextState = nil
     if self._queuedState ~= nil then
+        self:_printDebug(`State Override Found.`)
         nextState = self._queuedState
         self._queuedState = nil
     else
@@ -128,7 +148,9 @@ function StateMachineMT:UpdateState()
                 if self._queuedState ~= nil then
                     return true
                 end
+                return false
             end):expect()
+            self:_printDebug(`{v:GetName()} Cycled result: {shouldBreak}`)
             if shouldBreak then
                 nextState = v
                 break
@@ -139,6 +161,8 @@ function StateMachineMT:UpdateState()
     self._queuedState = nil
 
     nextState = nextState or self._defaultState
+
+    self:_printDebug(`Entering new state {nextState:GetName()}`)
 
     self._lastState = self._currentState
 
@@ -158,9 +182,9 @@ function StateMachineMT:Start()
         state:AttachStateMachine(self)
     end
 
-    self._started = true
+    self:_printDebug(`Started State Machine with default state {self._currentState:GetName()}`)
 
-    self:UpdateState()
+    self._started = true
 
     return self
 end
