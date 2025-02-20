@@ -182,9 +182,11 @@ function StateMachineMT:Start()
         state:AttachStateMachine(self)
     end
 
+    self._started = true
+
     self:_printDebug(`Started State Machine with default state {self._currentState:GetName()}`)
 
-    self._started = true
+    self:UpdateState()
 
     return self
 end
