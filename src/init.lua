@@ -194,9 +194,9 @@ function StateMachineMT:Start()
     self._queuedState = self._defaultState
     self._started = true
 
-    self:_printDebug(`Started State Machine with default state {self._currentState:GetName()}`)
-
     self:UpdateState()
+
+    self:_printDebug(`Started State Machine with default state {self._currentState:GetName()}`)
 
     return self
 end
