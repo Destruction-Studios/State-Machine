@@ -35,6 +35,7 @@ local NO_STATE_AT_KEY_ERR = "Could not find state at key '%s'"
 local NO_DEFAULT_STATE_ERR = "State Machine does not have a Default State"
 local ALREADY_STARTED_ERR = "State Machine has already been started"
 local NOT_STARTED_ERR = "State Machine has not been started"
+local NO_STATES_ERR = "State Machine has no states"
 
 local StateMachine = {}
 local StateMachineMT = {}
@@ -64,7 +65,7 @@ function StateMachineMT:GetLastState()
     return self._lastState
 end
 
-function StateMachineMT:GetState(stateKey:StateIdentifier): State
+function StateMachineMT:GetStateFromKey(stateKey:StateIdentifier): State
     local states = self:GetStates()
     local newState = nil
     if typeof(stateKey) == "number" then
@@ -91,10 +92,16 @@ function StateMachineMT:GetStates(): {[number]:State}
     return self._states
 end
 
+function StateMachineMT:SetStates(states:{State})
+    assert(typeof(states) == "table", `Invalid type for argument #1 :SetStates expected 'table' got {typeof(states)}`)
+
+    self._states = states
+end
+
 function StateMachineMT:SetDefaultState(defaultState:StateIdentifier)
     assert(not self._started, ALREADY_STARTED_ERR)
 
-    self._defaultState = self:GetState(defaultState)
+    self._defaultState = self:GetStateFromKey(defaultState)
     self._currentState = self._defaultState
 
     return self
@@ -102,7 +109,7 @@ end
 
 function StateMachineMT:SetNextState(state:StateIdentifier)
     assert(self._started, NOT_STARTED_ERR)
-    self._queuedState = self:GetState(state)
+    self._queuedState = self:GetStateFromKey(state)
 
     return self
 end
@@ -141,6 +148,8 @@ end
 function StateMachineMT:Start()
     assert(not self._started, ALREADY_STARTED_ERR)
     assert(self._currentState, NO_DEFAULT_STATE_ERR)
+    assert(self._states ~= nil, NO_STATES_ERR)
+    assert(#self._states > 0, NO_STATES_ERR)
 
     for _, state in self:GetStates() do
         state:AttachStateMachine(self)
