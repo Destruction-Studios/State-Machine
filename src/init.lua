@@ -134,7 +134,6 @@ function StateMachineMT:SetDefaultState(defaultState:StateIdentifier)
     assert(not self._started, ALREADY_STARTED_ERR)
 
     self._defaultState = self:GetStateFromKey(defaultState)
-    self._currentState = self._defaultState
 
     return self
 end
@@ -184,7 +183,7 @@ end
 
 function StateMachineMT:Start()
     assert(not self._started, ALREADY_STARTED_ERR)
-    assert(self._currentState, NO_DEFAULT_STATE_ERR)
+    assert(self._defaultState, NO_DEFAULT_STATE_ERR)
     assert(self._states ~= nil, NO_STATES_ERR)
     assert(#self._states > 0, NO_STATES_ERR)
 
@@ -192,6 +191,7 @@ function StateMachineMT:Start()
         state:AttachStateMachine(self)
     end
 
+    self._queuedState = self._defaultState
     self._started = true
 
     self:_printDebug(`Started State Machine with default state {self._currentState:GetName()}`)
