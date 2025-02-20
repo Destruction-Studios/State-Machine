@@ -23,6 +23,7 @@ export type StateMachine = {
     GetCurrentState:(self:StateMachine) -> State,
     GetLastState:(self:StateMachine) -> State,
 
+    SetStates:(self:StateMachine, states:{State}) -> StateMachine,
     SetDefaultState:(self:StateMachine, defaultState:StateIdentifier) -> StateMachine,
     SetNextState:(self:StateMachine, nextState:StateIdentifier) -> StateMachine,
 
@@ -96,6 +97,8 @@ function StateMachineMT:SetStates(states:{State})
     assert(typeof(states) == "table", `Invalid type for argument #1 :SetStates expected 'table' got {typeof(states)}`)
 
     self._states = states
+
+    return self
 end
 
 function StateMachineMT:SetDefaultState(defaultState:StateIdentifier)
