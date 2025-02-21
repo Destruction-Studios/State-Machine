@@ -22,6 +22,9 @@ export type State = {
     Entered:(self:State) -> nil,
     Exited:(self:State) -> nil,
 
+    MachineStart:(self:State) -> nil,
+    MachineStop:(self:State) -> nil,
+
     Clone:(self:State) -> State,
 }
 
@@ -39,6 +42,8 @@ export type StateMachine = {
 
     UpdateState:(self:StateMachine) -> StateMachine,
     Start:(self:StateMachine) -> StateMachine,
+    Stop:(self:StateMachine) -> nil,
+    Destroy:(self:StateMachine) -> nil,
 }
 
 local NO_STATE_AT_INDEX_ERR = "Could not find state at index '%s'"
@@ -152,6 +157,16 @@ function StateMachineMT:SetNextState(state:StateIdentifier)
     return self
 end
 
+function StateMachineMT:_machineStart()
+    for _, v in self:GetStates() do
+        v:_machineStart()
+    end
+end
+
+function StateMachineMT:_machineStop()
+    
+end
+
 function StateMachineMT:UpdateState()
     local nextState = nil
     if self._queuedState ~= nil then
@@ -201,11 +216,25 @@ function StateMachineMT:Start()
     self._queuedState = self._defaultState
     self._started = true
 
+    self:_machineStart()
     self:UpdateState()
 
     self:_printDebug(`Started State Machine with default state {self._currentState:GetName()}`)
 
     return self
+end
+
+function StateMachineMT:Stop()
+    for _, v in self:GetStates() do
+        v:_clean()
+    end
+    self:GetCurrentState():_exited()
+    self:_machineStop()
+    table.clear(self)
+end
+
+function StateMachineMT:Destroy()
+    self:Stop()
 end
 
 return StateMachine

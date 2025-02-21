@@ -48,6 +48,24 @@ function StateMT:_clean()
     end
 end
 
+function StateMT:_machineStart()
+    if not self.MachineStart then
+        return
+    end
+    return Promise.try(self.MachineStart, self):catch(function(err)
+        warn(STATE_FUNCTION_PROMISE_ERR:format("MachineStart", self:GetName(), tostring(err)))
+    end)
+end
+
+function StateMT:_machineStop()
+    if not self.MachineStop then
+        return
+    end
+    return Promise.try(self.MachineStop, self):catch(function(err)
+        warn(STATE_FUNCTION_PROMISE_ERR:format("MachineStop", self:GetName(), tostring(err)))
+    end)
+end
+
 function StateMT:_entered()
     assert(self:GetStateMachine(), NO_STATE_ERR:format(self:GetName()))
     assert(typeof(self.Entered) == "function", NO_STATE_FUNCTION_ERR:format(self:GetName(), "Entered"))
