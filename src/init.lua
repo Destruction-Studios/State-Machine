@@ -5,11 +5,18 @@ local Signal = require(script.Parent.Signal)
 -- export type State = typeof(State.new())
 export type StateIdentifier = string | number
 
+export type TroveLike = {
+    Clean:(self:TroveLike) -> nil,
+    Add:<T>(self:TroveLike, object:T, cleanup:any?) -> T,
+}
+
 export type State = {
     GetStateMachine:(self:State) -> StateMachine,
     GetName:(self:State) -> string,
 
-    AttackStateMachine:(self:State, stateMachine:StateMachine) -> nil,
+    CreateTrove:(self:State) -> TroveLike,
+    
+    AttachStateMachine:(self:State, stateMachine:StateMachine) -> nil,
 
     Cycled:(self:State, enterState: () -> nil) -> nil,
     Entered:(self:State) -> nil,
