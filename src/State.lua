@@ -81,7 +81,7 @@ function StateMT:_exited()
 
     self:_clean()
 
-    if self.Cycled == nil then
+    if self.Exited == nil then
         return
     end
 

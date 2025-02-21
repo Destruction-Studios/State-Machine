@@ -68,6 +68,8 @@ function StateMachine.new(states:{State}): StateMachine
 
     self._states = states
 
+    self._stopped = false
+
     self._currentState = nil
     self._defaultState = nil
     self._queuedState = nil
@@ -175,6 +177,9 @@ function StateMachineMT:UpdateState()
         self._queuedState = nil
     else
         for _, v in self:GetStates() do
+            if self._stopped then
+                return
+            end
             local shouldBreak = v:_cycled():andThen(function()
                 if self._queuedState ~= nil then
                     return true
@@ -189,6 +194,10 @@ function StateMachineMT:UpdateState()
         end
     end
 
+    if self._stopped then
+        return
+    end
+    
     self._queuedState = nil
 
     nextState = nextState or self._defaultState
@@ -225,12 +234,13 @@ function StateMachineMT:Start()
 end
 
 function StateMachineMT:Stop()
+    self._stopped = true
+
     for _, v in self:GetStates() do
         v:_clean()
     end
     self:GetCurrentState():_exited()
     self:_machineStop()
-    table.clear(self)
 end
 
 function StateMachineMT:Destroy()
