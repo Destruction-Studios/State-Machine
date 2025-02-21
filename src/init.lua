@@ -166,7 +166,9 @@ function StateMachineMT:_machineStart()
 end
 
 function StateMachineMT:_machineStop()
-    
+    for _, v in self:GetStates() do
+        v:_machineStop()
+    end
 end
 
 function StateMachineMT:UpdateState()
