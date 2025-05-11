@@ -67,7 +67,11 @@ function StateMachine.new(states: { State }): StateMachine
 	local self = {}
 	setmetatable(self, StateMachineMT)
 
-	self._states = states
+	self._states = {}
+
+	for i, state in states do
+		self._states[i] = state:Clone()
+	end
 
 	self._stopped = false
 
