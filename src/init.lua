@@ -28,6 +28,8 @@ export type State = {
 }
 
 export type StateMachine = {
+	Data: {},
+
 	Debug: (self: StateMachine) -> StateMachine,
 
 	GetState: (self: StateMachine, stateIdentifier: StateIdentifier) -> State,
