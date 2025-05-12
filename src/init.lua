@@ -56,7 +56,8 @@ export type StateMachine = {
 	Stop: (self: StateMachine) -> nil,
 	Destroy: (self: StateMachine) -> nil,
 
-	StateChanged: Signal,
+	EnteredState: Signal,
+	EnteringState: Signal,
 }
 
 local NO_STATE_AT_INDEX_ERR = "Could not find state at index '%s'"
@@ -97,7 +98,8 @@ function StateMachine.new(states: { State }): StateMachine
 
 	self._debug = false
 
-	self.StateChanged = Signal.new()
+	self.EnteredState = Signal.new()
+	self.EnteringState = Signal.new()
 
 	self._started = false
 
@@ -168,6 +170,10 @@ function StateMachineMT:SetStates(states: { State })
 		table.insert(tracked, v:GetName())
 	end
 	table.clear(tracked)
+
+	for i, state in states do
+		self._states[i] = state:Clone()
+	end
 
 	self._states = states
 
@@ -244,8 +250,12 @@ function StateMachineMT:UpdateState()
 
 	self._lastState = self._currentState
 
+	self.EnteringState:Fire(nextState:GetName())
+
 	self._currentState = nextState
 	self._currentState:_entered()
+
+	self.EnteredState:Fire(nextState:GetName())
 
 	return self
 end
