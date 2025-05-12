@@ -1,4 +1,5 @@
 local State = require(script.State)
+local AbstractCharacter = require(script.AbstractCharacter)
 local Signal = require(script.Parent.Signal)
 
 -- export type State = typeof(State.new())
@@ -7,6 +8,12 @@ export type StateIdentifier = string | number
 export type TroveLike = {
 	Clean: (self: TroveLike) -> nil,
 	Add: <T>(self: TroveLike, object: T, cleanup: any?) -> T,
+}
+
+export type AbstractCharacter = {
+	GetRoot: (self: AbstractCharacter) -> Part,
+	GetHead: (self: AbstractCharacter) -> Part,
+	GetHumanoid: (self: AbstractCharacter) -> Humanoid,
 }
 
 export type State = {
@@ -61,6 +68,9 @@ StateMachineMT.__index = StateMachineMT
 
 StateMachine.State = State :: {
 	new: (name: string) -> State,
+}
+StateMachine.AbstractCharacter = AbstractCharacter :: {
+	new: (model: Model) -> AbstractCharacter,
 }
 
 function StateMachine.new(states: { State }): StateMachine
