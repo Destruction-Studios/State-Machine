@@ -3,6 +3,7 @@ local AbstractCharacter = require(script.AbstractCharacter)
 local Signal = require(script.Parent.Signal)
 
 -- export type State = typeof(State.new())
+export type Signal = typeof(Signal.new())
 export type StateIdentifier = string | number
 
 export type TroveLike = {
@@ -54,6 +55,8 @@ export type StateMachine = {
 	Start: (self: StateMachine) -> StateMachine,
 	Stop: (self: StateMachine) -> nil,
 	Destroy: (self: StateMachine) -> nil,
+
+	StateChanged: Signal,
 }
 
 local NO_STATE_AT_INDEX_ERR = "Could not find state at index '%s'"
