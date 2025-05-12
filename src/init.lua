@@ -43,7 +43,9 @@ export type StateMachine = {
 	GetStates: (self: StateMachine) -> { [number]: State },
 	GetCurrentState: (self: StateMachine) -> State,
 	GetLastState: (self: StateMachine) -> State,
+	GetAbstractCharacter: (self: StateMachine) -> AbstractCharacter?,
 
+	SetAbstractCharacter: (self: StateMachine, abstractCharacter: AbstractCharacter) -> StateMachine,
 	SetStates: (self: StateMachine, states: { State }) -> StateMachine,
 	SetDefaultState: (self: StateMachine, defaultState: StateIdentifier) -> StateMachine,
 	SetNextState: (self: StateMachine, nextState: StateIdentifier) -> StateMachine,
@@ -140,6 +142,16 @@ end
 
 function StateMachineMT:GetStates(): { [number]: State }
 	return self._states
+end
+
+function StateMachineMT:GetAbstractCharacter()
+	return self._abstractChar
+end
+
+function StateMachineMT:SetAbstractChararcter(char)
+	self._abstractChar = char
+
+	return self
 end
 
 function StateMachineMT:SetStates(states: { State })
