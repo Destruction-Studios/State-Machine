@@ -153,7 +153,7 @@ function StateMachineMT:GetAbstractCharacter()
 	return self._abstractChar
 end
 
-function StateMachineMT:SetAbstractChararcter(char)
+function StateMachineMT:SetAbstractCharacter(char)
 	self._abstractChar = char
 
 	return self
