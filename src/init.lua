@@ -2,7 +2,8 @@ local State = require(script.State)
 local AbstractCharacter = require(script.AbstractCharacter)
 local Signal = require(script.Parent.Signal)
 
--- export type State = typeof(State.new())
+-- Types
+
 export type Signal = typeof(Signal.new())
 export type StateIdentifier = string | number
 
@@ -60,13 +61,18 @@ export type StateMachine = {
 	EnteringState: Signal,
 }
 
-local NO_STATE_AT_INDEX_ERR = "Could not find state at index '%s'"
-local NO_STATE_AT_KEY_ERR = "Could not find state at key '%s'"
-local NO_DEFAULT_STATE_ERR = "State Machine does not have a Default State"
-local ALREADY_STARTED_ERR = "State Machine has already been started"
-local NOT_STARTED_ERR = "State Machine has not been started"
-local NO_STATES_ERR = "State Machine has no states"
-local DUPE_STATE_NAME = "Duplicate state name of '%s'"
+-- Errors
+
+local ERR_NO_STATE_AT_INDEX = "Could not find state at index '%s'"
+local ERR_NO_STATE_AT_KEY = "Could not find state at key '%s'"
+local ERR_NO_DEFAULT_STATE = "StateMachine does not have a default state set"
+local ERR_ALREADY_STARTED = "StateMachine has already been started"
+local ERR_NOT_STARTED = "StateMachine has not been started yet"
+local ERR_NO_STATES = "StateMachine has no states"
+local ERR_DUPE_STATE_NAME = "Duplicate state name '%s'"
+local ERR_INVALID_STATES_ARG = "SetStates expected a table, got '%s'"
+
+-- Implementation
 
 local StateMachine = {}
 local StateMachineMT = {}
@@ -79,222 +85,251 @@ StateMachine.AbstractCharacter = AbstractCharacter :: {
 	new: (model: Model) -> AbstractCharacter,
 }
 
-function StateMachine.new(states: { State }): StateMachine
-	local self = {}
-	setmetatable(self, StateMachineMT)
-
-	self._states = {}
-
+local function cloneStates(states: { State }): { State }
+	local cloned = {}
 	for i, state in states do
-		self._states[i] = state:Clone()
+		cloned[i] = state:Clone()
 	end
+	return cloned
+end
 
-	self._stopped = false
+local function assertNoDuplicateNames(states: { State })
+	local seen = {}
+	for _, state in states do
+		local name = state:GetName()
+		assert(not seen[name], ERR_DUPE_STATE_NAME:format(name))
+		seen[name] = true
+	end
+end
 
+function StateMachine.new(states: { State }): StateMachine
+	assert(typeof(states) == "table", ERR_INVALID_STATES_ARG:format(typeof(states)))
+	assertNoDuplicateNames(states)
+
+	local self = setmetatable({}, StateMachineMT)
+
+	self._states = cloneStates(states)
 	self._currentState = nil
 	self._defaultState = nil
 	self._queuedState = nil
 	self._lastState = nil
-
+	self._abstractChar = nil
+	self._started = false
+	self._stopped = false
 	self._debug = false
 
+	self.Data = {}
 	self.EnteredState = Signal.new()
 	self.EnteringState = Signal.new()
-
-	self._started = false
 
 	return self
 end
 
-function StateMachineMT:_printDebug(str)
+-- Debug
+
+function StateMachineMT:_log(str: string)
 	if self._debug then
 		print(`\n[STATE-MACHINE] {str}\n`)
 	end
 end
 
-function StateMachineMT:Debug()
+function StateMachineMT:Debug(): StateMachine
 	self._debug = true
-
 	return self
 end
 
-function StateMachineMT:GetLastState()
-	return self._lastState
-end
+-- Getters
 
-function StateMachineMT:GetStateFromKey(stateKey: StateIdentifier): State
-	local states = self:GetStates()
-	local newState = nil
-	if typeof(stateKey) == "number" then
-		newState = states[stateKey]
-		assert(newState, NO_STATE_AT_INDEX_ERR:format(stateKey))
-	elseif typeof(stateKey) == "string" then
-		for _, state in states do
-			if state:GetName() == stateKey then
-				newState = state
-				break
-			end
-		end
-		assert(newState, NO_STATE_AT_KEY_ERR:format(stateKey))
-	end
-
-	return newState
+function StateMachineMT:GetStates(): { [number]: State }
+	return self._states
 end
 
 function StateMachineMT:GetCurrentState(): State
 	return self._currentState
 end
 
-function StateMachineMT:GetStates(): { [number]: State }
-	return self._states
+function StateMachineMT:GetLastState(): State
+	return self._lastState
 end
 
-function StateMachineMT:GetAbstractCharacter()
+function StateMachineMT:GetAbstractCharacter(): AbstractCharacter?
 	return self._abstractChar
 end
 
-function StateMachineMT:SetAbstractCharacter(char)
-	self._abstractChar = char
-
-	return self
-end
-
-function StateMachineMT:SetStates(states: { State })
-	assert(typeof(states) == "table", `Invalid type for argument #1 :SetStates expected 'table' got {typeof(states)}`)
-
-	local tracked = {}
-	for _, v in states do
-		if table.find(tracked, v:GetName()) then
-			error(DUPE_STATE_NAME:format(v:GetName()))
+--- Resolves a StateIdentifier to a State object. Errors if not found.
+function StateMachineMT:GetState(stateKey: StateIdentifier): State
+	if typeof(stateKey) == "number" then
+		local state = self._states[stateKey]
+		assert(state, ERR_NO_STATE_AT_INDEX:format(stateKey))
+		return state
+	elseif typeof(stateKey) == "string" then
+		for _, state in self._states do
+			if state:GetName() == stateKey then
+				return state
+			end
 		end
-		table.insert(tracked, v:GetName())
+		error(ERR_NO_STATE_AT_KEY:format(stateKey))
 	end
-	table.clear(tracked)
+	error(`Invalid StateIdentifier type: {typeof(stateKey)}`)
+end
 
-	for i, state in states do
-		self._states[i] = state:Clone()
-	end
+-- Setters
 
-	self._states = states
+function StateMachineMT:SetAbstractCharacter(char: AbstractCharacter): StateMachine
+	self._abstractChar = char
+	return self
+end
+
+function StateMachineMT:SetStates(states: { State }): StateMachine
+	assert(typeof(states) == "table", ERR_INVALID_STATES_ARG:format(typeof(states)))
+	assertNoDuplicateNames(states)
+
+	self._states = cloneStates(states)
 
 	return self
 end
 
-function StateMachineMT:SetDefaultState(defaultState: StateIdentifier)
-	assert(not self._started, ALREADY_STARTED_ERR)
-
-	self._defaultState = self:GetStateFromKey(defaultState)
-
+function StateMachineMT:SetDefaultState(defaultState: StateIdentifier): StateMachine
+	assert(not self._started, ERR_ALREADY_STARTED)
+	self._defaultState = self:GetState(defaultState)
 	return self
 end
 
-function StateMachineMT:SetNextState(state: StateIdentifier)
-	assert(self._started, NOT_STARTED_ERR)
-	self._queuedState = self:GetStateFromKey(state)
-
+function StateMachineMT:SetNextState(state: StateIdentifier): StateMachine
+	assert(self._started, ERR_NOT_STARTED)
+	self._queuedState = self:GetState(state)
 	return self
 end
+
+-- Lifecycle helpers
 
 function StateMachineMT:_machineStart()
-	for _, v in self:GetStates() do
-		v:_machineStart()
+	for _, state in self._states do
+		state:_machineStart()
 	end
 end
 
 function StateMachineMT:_machineStop()
-	for _, v in self:GetStates() do
-		v:_machineStop()
+	for _, state in self._states do
+		state:_machineStop()
 	end
 end
 
-function StateMachineMT:UpdateState()
+-- Core update loop
+
+function StateMachineMT:UpdateState(): StateMachine
+	if self._stopped then
+		return self
+	end
+
 	local nextState = nil
+
 	if self._queuedState ~= nil then
-		self:_printDebug(`State Override Found.`)
+		-- An explicit override was set via SetNextState
+		self:_log("State override found, skipping cycle checks.")
 		nextState = self._queuedState
 		self._queuedState = nil
 	else
-		for _, v in self:GetStates() do
+		-- Let each state's Cycled function decide if it should become active
+		for _, state in self._states do
 			if self._stopped then
-				return
+				return self
 			end
-			local shouldBreak = v:_cycled()
+
+			local wantsToEnter = state
+				:_cycled()
 				:andThen(function()
+					-- _cycled may have caused a SetNextState call
 					if self._queuedState ~= nil then
 						return true
 					end
 					return false
 				end)
 				:expect()
-			self:_printDebug(`{v:GetName()} Cycled result: {shouldBreak}`)
-			if shouldBreak then
-				nextState = v
+
+			self:_log(`{state:GetName()} Cycled → wantsToEnter: {wantsToEnter}`)
+
+			if wantsToEnter then
+				nextState = state
+				self._queuedState = nil
 				break
 			end
 		end
 	end
 
 	if self._stopped then
-		return
+		return self
 	end
 
-	self._queuedState = nil
-
+	-- Fall back to the default state if no state requested entry
 	nextState = nextState or self._defaultState
 
-	self:_printDebug(`Entering new state {nextState:GetName()}`)
+	self:_log(`Transitioning to state: {nextState:GetName()}`)
 
-	if self._lastState then
-		self._lastState:_exited()
+	-- Exit previous state
+	if self._currentState then
+		self._currentState:_exited()
 	end
 
 	self._lastState = self._currentState
 
+	-- Enter next state
 	self.EnteringState:Fire(nextState:GetName())
-
 	self._currentState = nextState
 	self._currentState:_entered()
-
 	self.EnteredState:Fire(nextState:GetName())
 
 	return self
 end
 
-function StateMachineMT:Start()
-	assert(not self._started, ALREADY_STARTED_ERR)
-	assert(self._defaultState, NO_DEFAULT_STATE_ERR)
-	assert(self._states ~= nil, NO_STATES_ERR)
-	assert(#self._states > 0, NO_STATES_ERR)
+-- Start / Stop / Destroy
 
-	for _, state in self:GetStates() do
+function StateMachineMT:Start(): StateMachine
+	assert(not self._started, ERR_ALREADY_STARTED)
+	assert(self._defaultState ~= nil, ERR_NO_DEFAULT_STATE)
+	assert(self._states ~= nil and #self._states > 0, ERR_NO_STATES)
+
+	for _, state in self._states do
 		state:AttachStateMachine(self)
 	end
 
-	self._queuedState = self._defaultState
 	self._started = true
+	self._stopped = false
+	self._queuedState = self._defaultState
 
 	self:_machineStart()
 	self:UpdateState()
 
-	self:_printDebug(`Started State Machine with default state {self._currentState:GetName()}`)
+	self:_log(`Started with default state: {self._currentState:GetName()}`)
 
 	return self
 end
 
 function StateMachineMT:Stop()
+	if self._stopped then
+		return
+	end
+
 	self._stopped = true
 
-	for _, v in self:GetStates() do
-		v:_clean()
+	-- Clean all state troves
+	for _, state in self._states do
+		state:_clean()
 	end
+
+	-- Exit the active state
 	if self._currentState then
-		self:GetCurrentState():_exited()
+		self._currentState:_exited()
 	end
+
 	self:_machineStop()
+	self._started = false
 end
 
 function StateMachineMT:Destroy()
 	self:Stop()
+	self.EnteredState:Destroy()
+	self.EnteringState:Destroy()
 end
 
 return StateMachine
